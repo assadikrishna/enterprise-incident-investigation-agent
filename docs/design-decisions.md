@@ -61,3 +61,46 @@ Status:
 Implemented in v0.2
 
 ---
+
+## DD-006: LLM Integration
+
+Problem
+
+Real language models do not always return perfectly formatted or
+deterministic responses.
+
+Decision
+
+The agent will treat the LLM as an unreliable component.
+
+Mitigations
+
+• Prompt engineering
+• Output validation
+• Retry logic
+• Tool validation
+• Human clarification
+• Maximum reasoning steps
+
+## DD-007: Prompt refinement for evidence-based reasoning.
+Context
+
+During integration with a real LLM through OpenRouter, the agent occasionally overstated conclusions, blurred the distinction between observed evidence and inferred hypotheses, and recommended production actions without sufficiently emphasizing human oversight. These behaviors reduced the reliability of the investigation.
+
+Decision
+
+The system prompt was refined to encourage evidence-based reasoning. The prompt now instructs the agent to:
+
+-distinguish observed evidence from inferred hypotheses,
+-avoid claiming causation unless supported by evidence,
+-communicate uncertainty when evidence is incomplete,
+-recommend human investigation steps for information the agent cannot access,
+-require engineer approval before recommending production changes.
+
+Rationale
+
+A real language model is probabilistic and may produce different responses for the same input. Providing clearer instructions improves consistency, encourages grounded recommendations, and better aligns the agent's behavior with real-world incident investigation practices.
+
+Trade-offs
+
+Prompt refinement improves response quality but does not guarantee compliance. Important safety and validation rules will be implemented as application-level guardrails and protocol logic in later iterations of the project.

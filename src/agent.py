@@ -29,15 +29,48 @@ At each step:
    - any remaining uncertainty.
 
 Available actions:
-- get_incident_details[incident_id]
-- search_logs[query]
-- get_runbook[service]
-- ask_user[question]
-- finish[answer]
+- get_incident_details[<incident_id>]
+- search_logs[<query>]
+- get_runbook[<service>]
+- ask_user[<question>]
+- finish[<answer>]
+
+
+Important:
+- Replace every value enclosed in < > with an actual value from the
+user request or previous observations.
+- Do not output placeholders literally.
+- Never use literal placeholder words such as incident_id, query, service, question, or answer.
+- Select exactly one action.
+- Always inspect the CURRENT USER REQUEST before selecting an action.
+- If the current request contains an incident ID, use that exact ID.
+- Do not ask the user for information that is already present in the request
+  or previous observations.
+
+Illustrative example only:
+
+Example request:
+Investigate incident INC-005.
+
+Example response:
+Thought: I should retrieve the incident details first.
+Action: get_incident_details[INC-005]
+
+The example is only a format demonstration. Always act on the CURRENT USER REQUEST.
+
 
 Required response format:
 Thought: <brief reasoning about the next investigation step>
 Action: <one available action>
+
+- Clearly separate observed evidence from inferred hypotheses.
+- Do not state that a deployment caused the incident unless the evidence proves causation.
+- Use phrases such as "may be related," "likely contributing factor," or
+  "requires further verification" when evidence is incomplete.
+- Production changes such as rollback, restart, scaling, or configuration
+  changes require human review and approval.
+- Do not imply that a check was performed unless a tool observation confirms it.
+- When recommending checks that require unavailable tools or data, label them as suggested human investigation steps.
 """.strip()
 
 
@@ -84,7 +117,7 @@ def parse_response(response: str) -> tuple[str, str]:
     action_match = re.search(
         r"Action:\s*(.+)",
         response,
-        flags=re.IGNORECASE,
+        flags=re.IGNORECASE | re.DOTALL,
     )
 
     thought = thought_match.group(1).strip() if thought_match else ""
@@ -109,7 +142,11 @@ def investigate(
     trace = ""
     prompt = (
         f"{SYSTEM_PROMPT}\n\n"
-        f"User request: {incident_request}\n\n"
+        "===== CURRENT USER REQUEST =====\n"
+        f"{incident_request}\n"
+        "===== END CURRENT USER REQUEST =====\n\n"
+        "Use all concrete values in the current user request, including any "
+        "incident ID. Do not ask for information already provided.\n\n"
     )
 
     for step in range(1, max_steps + 1):

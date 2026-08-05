@@ -49,15 +49,23 @@ def get_incident_details(incident_id: str) -> str:
 
 
 def search_logs(query: str) -> str:
-    """Search synthetic logs using simple case-insensitive matching."""
-    normalized_query = query.strip().lower()
+    """Search synthetic logs using case-insensitive keyword matching."""
+    keywords = query.strip().lower().split()
 
-    matches = [
-        log
-        for log in LOGS
-        if normalized_query in log["service"].lower()
-        or normalized_query in log["message"].lower()
-    ]
+    if not keywords:
+        return "No log search query was provided."
+
+    matches = []
+
+    for log in LOGS:
+        searchable_text = (
+            f'{log["timestamp"]} '
+            f'{log["service"]} '
+            f'{log["message"]}'
+        ).lower()
+
+        if any(keyword in searchable_text for keyword in keywords):
+            matches.append(log)
 
     if not matches:
         return f"No log entries matched '{query}'."
