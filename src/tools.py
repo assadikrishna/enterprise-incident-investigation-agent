@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from typing import Any
-
+from .retrieval import SemanticRetriever
+_knowledge_retriever = SemanticRetriever()
 
 INCIDENTS: dict[str, dict[str, Any]] = {
     "INC-001": {
@@ -79,3 +80,23 @@ def search_logs(query: str) -> str:
 def get_runbook(service: str) -> str:
     """Return the synthetic runbook for a service."""
     return RUNBOOKS.get(service, f"No runbook found for {service}.")
+
+
+def search_knowledge(query: str) -> str:
+    """Search runbooks and historical incidents using semantic retrieval."""
+    results = _knowledge_retriever.search(query, top_k=3)
+
+    if not results:
+        return f"No relevant knowledge found for '{query}'."
+
+    formatted_results = []
+
+    for rank, result in enumerate(results, start=1):
+        formatted_results.append(
+            f"Result {rank}\n"
+            f"Source: {result['source']}\n"
+            f"Score: {result['score']:.4f}\n"
+            f"Content: {result['text']}"
+        )
+
+    return "\n\n".join(formatted_results)

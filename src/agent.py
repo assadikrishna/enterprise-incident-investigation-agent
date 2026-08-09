@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
-from .tools import get_incident_details, get_runbook, search_logs
+from .tools import get_incident_details, get_runbook, search_logs, search_knowledge
 
 
 GenerateFunction = Callable[[str], str]
@@ -32,6 +32,7 @@ Available actions:
 - get_incident_details[<incident_id>]
 - search_logs[<query>]
 - get_runbook[<service>]
+- search_knowledge[<query>]
 - ask_user[<question>]
 - finish[<answer>]
 
@@ -46,6 +47,9 @@ user request or previous observations.
 - If the current request contains an incident ID, use that exact ID.
 - Do not ask the user for information that is already present in the request
   or previous observations.
+- Do not generate an Observation. Observations are produced only by application tools.
+- Output only one Thought and one Action per response.
+- Do not output any text after the Action.
 
 Illustrative example only:
 
@@ -92,6 +96,10 @@ def execute_action(action: str) -> str:
     if match:
         return get_runbook(match.group(1).strip())
 
+    match = re.fullmatch(r"search_knowledge\[(.+)]",action, flags=re.IGNORECASE | re.DOTALL,)
+    if match:
+        return search_knowledge(match.group(1).strip())
+    
     match = re.fullmatch(r"ask_user\[(.+)]", action, flags=re.IGNORECASE)
     if match:
         question = match.group(1).strip()
@@ -108,23 +116,39 @@ def execute_action(action: str) -> str:
 
 
 def parse_response(response: str) -> tuple[str, str]:
-    """Extract Thought and Action fields from the model response."""
-    thought_match = re.search(
-        r"Thought:\s*(.+?)(?=\nAction:|\Z)",
-        response,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-    action_match = re.search(
-        r"Action:\s*(.+)",
-        response,
+    """Extract exactly one Thought and one Action from the model response."""
+
+    response = response.strip()
+
+    pattern = re.compile(
+        r"^Thought:\s*(.+?)\n"
+        r"Action:\s*(.+)$",
         flags=re.IGNORECASE | re.DOTALL,
     )
 
-    thought = thought_match.group(1).strip() if thought_match else ""
-    action = action_match.group(1).strip() if action_match else ""
+    match = pattern.fullmatch(response)
 
-    if not action:
-        raise ValueError(f"Could not parse an action from model response:\n{response}")
+    if not match:
+        raise ValueError(
+            "Model response must contain exactly one Thought and one Action.\n"
+            f"Received:\n{response}"
+        )
+
+    thought = match.group(1).strip()
+    action = match.group(2).strip()
+
+    # Reject model-generated ReAct steps after the first action.
+    forbidden_markers = (
+        "\nObservation:",
+        "\nThought:",
+        "\nAction:",
+    )
+
+    if any(marker.lower() in action.lower() for marker in forbidden_markers):
+        raise ValueError(
+            "Model generated extra ReAct steps instead of waiting "
+            "for the tool observation."
+        )
 
     return thought, action
 
@@ -149,10 +173,65 @@ def investigate(
         "incident ID. Do not ask for information already provided.\n\n"
     )
 
+    MAX_FORMAT_RETRIES = 3
+
     for step in range(1, max_steps + 1):
-        response = generate(prompt + trace)
+        """response = generate(prompt + trace)
         thought, action = parse_response(response)
+        observation = execute_action(action)"""
+
+
+
+        correction = ""
+
+        for attempt in range(1, MAX_FORMAT_RETRIES + 1):
+
+                response = generate(
+                    prompt
+                    + trace
+                    + correction
+                )
+
+                print("\n===== RAW MODEL RESPONSE =====")
+                print(repr(response))
+                print("===== END RAW MODEL RESPONSE =====")
+
+                try:
+                    thought, action = parse_response(response)
+                    break
+
+                except ValueError as exc:
+                    print(
+                        f"\nInvalid model response "
+                        f"(attempt {attempt}/{MAX_FORMAT_RETRIES}): {exc}"
+                    )
+
+                    if attempt == MAX_FORMAT_RETRIES:
+                        raise RuntimeError(
+                            "Model failed to produce a valid Thought/Action "
+                            f"response after {MAX_FORMAT_RETRIES} attempts."
+                        ) from exc
+
+                    correction = (
+                        "\n\nSYSTEM CORRECTION:\n"
+                        "Your previous response violated the required ReAct protocol.\n"
+                        "Output exactly one Thought and one Action.\n"
+                        "Do not generate an Observation.\n"
+                        "Do not generate another Thought or Action.\n"
+                        "Stop immediately after the Action.\n"
+                    )
+
+       
+
+        print("\n===== PARSED ACTION =====")
+        print(repr(action))
+        print("===== END PARSED ACTION =====")
+
         observation = execute_action(action)
+
+        print("\n===== TOOL OBSERVATION =====")
+        print(repr(observation))
+        print("===== END TOOL OBSERVATION =====")
 
         print(f"\nStep {step}")
         print(f"Thought: {thought}")

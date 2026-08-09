@@ -104,3 +104,20 @@ A real language model is probabilistic and may produce different responses for t
 Trade-offs
 
 Prompt refinement improves response quality but does not guarantee compliance. Important safety and validation rules will be implemented as application-level guardrails and protocol logic in later iterations of the project.
+
+## DD-008: ReAct Output Validation and Format Retry
+
+During testing, the LLM sometimes generated more than the required Thought and Action. Instead of stopping after selecting an action and waiting for the application to execute the tool, the model generated its own Observation, continued reasoning, and sometimes generated additional actions or a final answer.
+
+This created a reliability risk because the model-generated observations could contain information that was never returned by an actual tool. For example, the model invented specific connection-pool configuration values while attempting to call search_knowledge. The actual knowledge retrieval tool had not yet executed.
+
+The agent was updated with two complementary safeguards:
+
+Prompt-level protocol: The system prompt explicitly instructs the model to output exactly one Thought and one Action, not generate an Observation, and stop after the action. This did not help. 
+Programmatic validation: parse_response() validates the model response and rejects responses containing additional Observation, Thought, or Action sections. This was timing out due to max steps.
+Format retry: A malformed response is retried within the same reasoning step. Invalid formatting therefore does not consume an investigation step or allow fabricated observations to enter the agent's evidence.
+Tool-controlled observations: Only the Python application executes actions and supplies observations back to the LLM.
+
+During testing, the parser successfully rejected fabricated observations. On a subsequent retry, the model produced a valid search_knowledge action, Python executed the semantic retrieval tool, and real retrieved documents were returned as the observation.
+
+This design separates LLM reasoning from trusted tool results and reduces the risk that hallucinated information will be treated as evidence during an incident investigation.
