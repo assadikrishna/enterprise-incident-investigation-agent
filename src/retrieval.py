@@ -14,6 +14,7 @@ KNOWLEDGE_DIR = Path("data/synthetic/knowledge")
 
 CHUNK_SIZE = 100
 TOP_K = 3
+MIN_RELEVANCE_SCORE = 0.40
 
 
 class SemanticRetriever:
@@ -107,6 +108,9 @@ class SemanticRetriever:
 
         for score, index in zip(scores[0], indices[0]):
             if index == -1:
+                continue
+
+            if score < MIN_RELEVANCE_SCORE:
                 continue
 
             result = dict(self.chunks[index])

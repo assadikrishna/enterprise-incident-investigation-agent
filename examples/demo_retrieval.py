@@ -9,6 +9,10 @@ def main() -> None:
         "and database connections are timing out after deployment."
     )
 
+    query = "Users cannot reset their passwords and the email notification system is failing."
+
+    query = "The inventory service is consuming high CPU during batch processing."
+
     results = retriever.search(query, top_k=3)
 
     print(f"\nQuery:\n{query}\n")

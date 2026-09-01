@@ -121,3 +121,33 @@ Tool-controlled observations: Only the Python application executes actions and s
 During testing, the parser successfully rejected fabricated observations. On a subsequent retry, the model produced a valid search_knowledge action, Python executed the semantic retrieval tool, and real retrieved documents were returned as the observation.
 
 This design separates LLM reasoning from trusted tool results and reduces the risk that hallucinated information will be treated as evidence during an incident investigation.
+
+
+## DD-009: Retrieval Reliability and Verification
+Problem 1 — Top-k always returns something
+
+Current behavior:
+
+top_k = 3
+→ always returns the three best matches
+→ even if all three are poor matches
+
+Improvement:
+
+top-k retrieval
+→ minimum relevance threshold
+→ 0–3 results can be returned
+
+Problem 2 — Semantic similarity does not mean causal consistency
+
+A document like INC-103 may legitimately have high semantic similarity because it contains payment-service, HTTP 503, timeouts, etc., while having a different root cause.
+
+Improvement:
+
+semantic retrieval
+        ↓
+minimum relevance threshold
+        ↓
+evidence-consistency verification
+        ↓
+supporting / alternative / contradictory / reject

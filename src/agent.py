@@ -78,7 +78,7 @@ Action: <one available action>
 """.strip()
 
 
-def execute_action(action: str) -> str:
+def execute_action(action: str, current_evidence: str = "") -> str:
     """Parse and execute one agent action."""
     action = action.strip()
 
@@ -96,9 +96,12 @@ def execute_action(action: str) -> str:
     if match:
         return get_runbook(match.group(1).strip())
 
-    match = re.fullmatch(r"search_knowledge\[(.+)]",action, flags=re.IGNORECASE | re.DOTALL,)
+    match = re.fullmatch(r"search_knowledge\[(.+)]", action, flags=re.IGNORECASE | re.DOTALL)
     if match:
-        return search_knowledge(match.group(1).strip())
+        return search_knowledge(
+            query=match.group(1).strip(),
+            current_evidence=current_evidence,
+        )
     
     match = re.fullmatch(r"ask_user\[(.+)]", action, flags=re.IGNORECASE)
     if match:
@@ -164,6 +167,7 @@ def investigate(
     The accumulated trace acts as short-term working memory for this run.
     """
     trace = ""
+    evidence_trace = f"Current user request:\n{incident_request}\n\n"
     prompt = (
         f"{SYSTEM_PROMPT}\n\n"
         "===== CURRENT USER REQUEST =====\n"
@@ -227,7 +231,7 @@ def investigate(
         print(repr(action))
         print("===== END PARSED ACTION =====")
 
-        observation = execute_action(action)
+        observation = execute_action(action,current_evidence=evidence_trace)
 
         print("\n===== TOOL OBSERVATION =====")
         print(repr(observation))
@@ -243,6 +247,11 @@ def investigate(
 
         if observation.startswith("USER_INPUT_REQUIRED:"):
             return observation
+
+        evidence_trace += (
+                f"Action: {action}\n"
+                f"Observation: {observation}\n\n"
+            )
 
         trace += (
             f"Thought: {thought}\n"

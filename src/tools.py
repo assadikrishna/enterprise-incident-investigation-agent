@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from .verification import verify_retrieved_evidence
 from .retrieval import SemanticRetriever
 _knowledge_retriever = SemanticRetriever()
 
@@ -82,21 +83,25 @@ def get_runbook(service: str) -> str:
     return RUNBOOKS.get(service, f"No runbook found for {service}.")
 
 
-def search_knowledge(query: str) -> str:
-    """Search runbooks and historical incidents using semantic retrieval."""
+def search_knowledge(query: str, current_evidence: str) -> str:
     results = _knowledge_retriever.search(query, top_k=3)
 
     if not results:
-        return f"No relevant knowledge found for '{query}'."
+        return "No relevant knowledge found"
 
     formatted_results = []
 
-    for rank, result in enumerate(results, start=1):
+    for result in results:
+        classification = verify_retrieved_evidence(
+            current_evidence=current_evidence,
+            retrieved_document=result["text"],
+        )
+
         formatted_results.append(
-            f"Result {rank}\n"
             f"Source: {result['source']}\n"
             f"Score: {result['score']:.4f}\n"
+            f"Classification: {classification}\n"
             f"Content: {result['text']}"
         )
 
-    return "\n\n".join(formatted_results)
+    return "\n\n---\n\n".join(formatted_results)
