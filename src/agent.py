@@ -168,6 +168,8 @@ def investigate(
     """
     trace = ""
     evidence_trace = f"Current user request:\n{incident_request}\n\n"
+    has_incident_details = False
+    has_log_evidence = False
     prompt = (
         f"{SYSTEM_PROMPT}\n\n"
         "===== CURRENT USER REQUEST =====\n"
@@ -180,12 +182,6 @@ def investigate(
     MAX_FORMAT_RETRIES = 3
 
     for step in range(1, max_steps + 1):
-        """response = generate(prompt + trace)
-        thought, action = parse_response(response)
-        observation = execute_action(action)"""
-
-
-
         correction = ""
 
         for attempt in range(1, MAX_FORMAT_RETRIES + 1):
@@ -231,7 +227,31 @@ def investigate(
         print(repr(action))
         print("===== END PARSED ACTION =====")
 
-        observation = execute_action(action,current_evidence=evidence_trace)
+        if re.fullmatch(r"finish\[.+]", action, flags=re.IGNORECASE | re.DOTALL):
+         missing_evidence = []
+         if not has_incident_details:
+                missing_evidence.append("incident details")
+
+         if not has_log_evidence:
+                missing_evidence.append("direct log evidence")
+
+         if missing_evidence:
+                observation = (
+                    "GUARDRAIL_BLOCKED: Cannot finish the investigation yet. "
+                    "Missing required evidence: "
+                    + ", ".join(missing_evidence)
+                    + ". Continue investigating."
+                )
+         else:
+                observation = execute_action(
+                    action,
+                    current_evidence=evidence_trace,
+                )
+        else:
+            observation = execute_action(
+                action,
+                current_evidence=evidence_trace,
+            )
 
         print("\n===== TOOL OBSERVATION =====")
         print(repr(observation))
@@ -241,6 +261,28 @@ def investigate(
         print(f"Thought: {thought}")
         print(f"Action: {action}")
         print(f"Observation: {observation}")
+
+        if (re.fullmatch(r"get_incident_details\[.+]",
+        action,
+        flags=re.IGNORECASE | re.DOTALL,
+        )
+            and not observation.startswith("ERROR:")
+            and "No incident found" not in observation
+        ):
+            has_incident_details = True
+
+        if (
+            re.fullmatch(
+                r"search_logs\[.+]",
+                action,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+            and not observation.startswith("ERROR:")
+            and not observation.startswith("No log search query was provided.")
+            and not observation.startswith("No log entries matched")
+            and observation.strip()
+        ):
+         has_log_evidence = True
 
         if observation.startswith("FINISH:"):
             return observation.removeprefix("FINISH:").strip()

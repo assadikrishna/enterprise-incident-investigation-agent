@@ -97,11 +97,17 @@ def search_knowledge(query: str, current_evidence: str) -> str:
             retrieved_document=result["text"],
         )
 
+        if classification == "REJECT":
+            continue
+
         formatted_results.append(
             f"Source: {result['source']}\n"
             f"Score: {result['score']:.4f}\n"
             f"Classification: {classification}\n"
             f"Content: {result['text']}"
         )
+
+    if not formatted_results:
+        return "No sufficiently relevant knowledge documents were found."
 
     return "\n\n---\n\n".join(formatted_results)

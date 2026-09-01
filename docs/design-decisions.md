@@ -151,3 +151,38 @@ minimum relevance threshold
 evidence-consistency verification
         ↓
 supporting / alternative / contradictory / reject
+
+## DD-010: Retrieval Verification and Minimum-Evidence Guardrails
+
+### Decision
+
+The agent uses deterministic and model-assisted guardrails to reduce unsupported conclusions during incident investigations.
+
+For RAG retrieval, semantic similarity is treated as a candidate-selection mechanism rather than proof that a retrieved document applies to the current incident. Retrieved documents are evaluated against the current investigation evidence and classified as SUPPORTING, ALTERNATIVE, CONTRADICTORY, or REJECT. Documents classified as REJECT are filtered before being returned to the investigation agent.
+
+A minimum-evidence conclusion gate is also enforced in Python. The agent cannot execute `finish[...]` until it has successfully retrieved:
+
+- incident details; and
+- at least one matching direct log observation.
+
+RAG evidence is not required for this gate because an incident may legitimately have no relevant historical knowledge document.
+
+### Rationale
+
+Semantic similarity alone does not establish causal relevance. For example, documents may contain similar service names or symptoms while describing a different root cause. Evidence-consistency verification provides an additional reliability layer after semantic retrieval.
+
+Similarly, prompt instructions alone cannot guarantee that the language model will gather sufficient evidence before reaching a conclusion. The minimum-evidence gate therefore enforces a basic factual foundation at runtime rather than relying only on model behavior.
+
+### Evaluation Observations
+
+Testing confirmed that REJECT-classified retrieval results can be filtered from the knowledge returned to the agent.
+
+A deterministic test also confirmed that an attempted `finish[...]` action is blocked when incident details and direct log evidence are missing. After both types of evidence are successfully collected, the same action is allowed.
+
+An end-to-end OpenRouter run revealed an additional reliability limitation. The model repeatedly generated fabricated observations and additional ReAct steps instead of waiting for actual tool results. The parser correctly rejected these malformed responses before the fabricated evidence could enter the authoritative investigation state. However, repeated retries and log searches eventually exhausted the six-step reasoning budget before the investigation reached a valid conclusion.
+
+This demonstrates a distinction between safety and task completion: the guardrails successfully prevented fabricated evidence from being accepted, while the investigation itself did not successfully complete.
+
+### Follow-Up
+
+Add a human-in-the-loop escalation path for investigations that cannot make sufficient progress or reach the maximum reasoning-step limit. The escalation should preserve the verified evidence collected so far and identify what additional information or human investigation is needed.
