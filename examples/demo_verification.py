@@ -1,65 +1,36 @@
-from src.verification import verify_retrieved_evidence
+from src.verification import verify_retrieved_evidence_batch
 
 
 current_evidence = """
-Service: payment-service
-Observed symptoms:
-- HTTP 503 errors
-- Database connection pool exhausted
-- Retry failed after database timeout
-Recent change:
-- Version 2.3 deployed shortly before the incident
+Incident INC-001 involves payment-service.
+The service returned HTTP 503 errors after deployment.
+Logs show database connection pool exhaustion and database timeout.
 """
 
+retrieved_documents = [
+    """
+    Historical incident INC-101:
+    payment-service returned HTTP 503 errors after a deployment.
+    Investigation found database connection pool exhaustion.
+    A configuration change had reduced the maximum connection pool size.
+    Restoring the previous configuration resolved the issue after engineer approval.
+    """,
+    """
+    Historical incident INC-103:
+    payment-service returned HTTP 503 errors because a downstream dependency timed out.
+    Database connectivity and connection pool utilization were normal.
+    """,
+    """
+    Knowledge article:
+    High CPU utilization can cause application performance degradation.
+    Check CPU utilization, thread usage, and resource limits.
+    """,
+]
 
-inc_101 = """
-Historical incident INC-101:
-The payment service returned HTTP 503 errors after a deployment.
-Investigation found database connection pool exhaustion.
-The incident was resolved after an engineer reviewed and restored
-the previous connection pool configuration.
-"""
-
-
-inc_103 = """
-Historical incident INC-103:
-The payment service returned HTTP 503 errors because a downstream
-dependency was timing out.
-Database connectivity and connection pool utilization remained normal.
-"""
-
-kb_cpu = """
-Knowledge Base:
-High CPU utilization may cause degraded response times or request failures.
-Common causes include inefficient code, excessive request volume,
-runaway background jobs, garbage collection overhead, or low resource limits.
-"""
-
-
-print("INC-101:")
-print(
-    verify_retrieved_evidence(
-        current_evidence,
-        inc_101,
-    )
+classifications = verify_retrieved_evidence_batch(
+    current_evidence=current_evidence,
+    retrieved_documents=retrieved_documents,
 )
 
-print()
-
-print("INC-103:")
-print(
-    verify_retrieved_evidence(
-        current_evidence,
-        inc_103,
-    )
-)
-
-print()
-
-print("KB CPU:")
-print(
-    verify_retrieved_evidence(
-        current_evidence,
-        kb_cpu,
-    )
-)
+for index, classification in enumerate(classifications, start=1):
+    print(f"Document {index}: {classification}")

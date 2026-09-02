@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from .verification import verify_retrieved_evidence
+from .verification import verify_retrieved_evidence_batch
 from .retrieval import SemanticRetriever
 _knowledge_retriever = SemanticRetriever()
 
@@ -89,14 +89,14 @@ def search_knowledge(query: str, current_evidence: str) -> str:
     if not results:
         return "No relevant knowledge found"
 
+    classifications = verify_retrieved_evidence_batch(
+        current_evidence=current_evidence,
+        retrieved_documents=[result["text"] for result in results],
+    )
+
     formatted_results = []
 
-    for result in results:
-        classification = verify_retrieved_evidence(
-            current_evidence=current_evidence,
-            retrieved_document=result["text"],
-        )
-
+    for result, classification in zip(results, classifications):
         if classification == "REJECT":
             continue
 

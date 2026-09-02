@@ -183,6 +183,12 @@ An end-to-end OpenRouter run revealed an additional reliability limitation. The 
 
 This demonstrates a distinction between safety and task completion: the guardrails successfully prevented fabricated evidence from being accepted, while the investigation itself did not successfully complete.
 
-### Follow-Up
+### Human-in-the-Loop Escalation
 
-Add a human-in-the-loop escalation path for investigations that cannot make sufficient progress or reach the maximum reasoning-step limit. The escalation should preserve the verified evidence collected so far and identify what additional information or human investigation is needed.
+A deterministic human-in-the-loop escalation path was added for investigations that reach the maximum reasoning-step limit without producing a sufficiently supported conclusion.
+
+Instead of terminating with only a maximum-step error, the runtime returns `HUMAN_INPUT_REQUIRED` together with the verified evidence collected during the investigation and a recommendation for additional human investigation.
+
+The escalation uses the evidence-only investigation trace rather than the full ReAct reasoning trace. Model-generated thoughts, parser failures, guardrail-control messages, and rejected fabricated observations are therefore not presented as verified incident evidence.
+
+This behavior was tested both with a deterministic simulated reasoning sequence and with an end-to-end OpenRouter-driven investigation. In the end-to-end test, malformed model responses containing fabricated observations were rejected, the agent later executed an actual knowledge retrieval, and the investigation eventually reached its reasoning-step limit. The runtime then successfully escalated to a human while preserving the accepted evidence gathered so far.

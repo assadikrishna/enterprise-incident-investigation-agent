@@ -1,3 +1,4 @@
+import re
 from .llm import generate
 
 ALLOWED_CLASSIFICATIONS = {
@@ -80,3 +81,78 @@ Retrieved document:
     classification = response.split(":", 1)[1]
 
     return validate_classification(classification)
+
+
+def verify_retrieved_evidence_batch(
+    current_evidence: str,
+    retrieved_documents: list[str],
+) -> list[str]:
+    numbered_documents = "\n\n".join(
+        f"Document {index + 1}:\n{document}"
+        for index, document in enumerate(retrieved_documents)
+    )
+
+    prompt = f"""
+You are evaluating retrieved knowledge against current incident evidence.
+
+Current incident evidence:
+{current_evidence}
+
+Retrieved documents:
+{numbered_documents}
+
+For each document, classify it as exactly one of:
+
+SUPPORTING
+ALTERNATIVE
+CONTRADICTORY
+REJECT
+
+Definitions:
+
+SUPPORTING:
+The document contains evidence or guidance consistent with the current incident evidence.
+
+ALTERNATIVE:
+The document describes a different plausible causal explanation for the same or closely related symptoms and has a meaningful causal connection to the incident.
+
+CONTRADICTORY:
+The document directly conflicts with the current incident evidence or current hypothesis.
+
+REJECT:
+The document is not useful enough for this investigation, describes an unrelated or substantially different symptom, or is too generic to meaningfully help.
+
+Important rules:
+- Do not invent facts.
+- Do not determine the root cause.
+- Use only the current incident evidence and retrieved documents.
+- A general failure with no meaningful causal connection is REJECT, not ALTERNATIVE.
+- Return exactly one classification for each document.
+- Preserve document order.
+
+Output format:
+Document 1: <CLASSIFICATION>
+Document 2: <CLASSIFICATION>
+Document 3: <CLASSIFICATION>
+"""
+
+    response = generate(prompt)
+
+    classifications = []
+
+    for index in range(len(retrieved_documents)):
+        match = re.search(
+            rf"Document\s+{index + 1}\s*:\s*"
+            r"(SUPPORTING|ALTERNATIVE|CONTRADICTORY|REJECT)",
+            response,
+            flags=re.IGNORECASE,
+        )
+
+        if not match:
+            raise ValueError(
+                f"Missing or invalid classification for document {index + 1}"
+            )
+
+        classifications.append(match.group(1).upper())
+
+    return classifications

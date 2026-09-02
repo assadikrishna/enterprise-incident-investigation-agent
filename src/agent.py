@@ -290,7 +290,11 @@ def investigate(
         if observation.startswith("USER_INPUT_REQUIRED:"):
             return observation
 
-        evidence_trace += (
+        if (
+            not observation.startswith("GUARDRAIL_BLOCKED:")
+            and not observation.startswith("ERROR:")
+        ):
+            evidence_trace += (
                 f"Action: {action}\n"
                 f"Observation: {observation}\n\n"
             )
@@ -302,6 +306,12 @@ def investigate(
         )
 
     return (
-        "Investigation stopped because the maximum number of reasoning "
-        "steps was reached."
+        "HUMAN_INPUT_REQUIRED: The investigation reached the maximum "
+        "number of reasoning steps without reaching a sufficiently supported "
+        "conclusion.\n\n"
+        "Verified evidence collected so far:\n"
+        f"{evidence_trace}\n"
+        "Recommended human action: Review the verified evidence above and "
+        "provide additional incident context or investigate information that "
+        "the current tools cannot access."
     )

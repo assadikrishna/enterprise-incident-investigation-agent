@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from openai import (
     APIConnectionError,
     APIStatusError,
+    APITimeoutError,
     AuthenticationError,
     OpenAI,
     RateLimitError,
@@ -54,6 +55,7 @@ def generate(
                     }
                 ],
                 temperature=0,
+                timeout=30.0,
             )
 
             if not response.choices:
@@ -76,6 +78,9 @@ def generate(
 
         except APIConnectionError as exc:
             last_error = "Could not connect to OpenRouter."
+
+        except APITimeoutError as exc:
+            last_error = "OpenRouter request timed out."
 
         except APIStatusError as exc:
             last_error = (
