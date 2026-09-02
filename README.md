@@ -74,7 +74,6 @@ enterprise-incident-investigation-agent/
 │   ├── tools.py                # Investigation tools
 │   └── verification.py         # Retrieved-evidence verification
 │
-├── tests/
 ├── requirements.txt
 └── README.md
 ```

@@ -6,8 +6,10 @@ __pycache__/
 *.py[cod]
 *.pyo
 
-# Environment variables
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
 
 # IDE settings
 .vscode/
@@ -24,9 +26,3 @@ build/
 
 # Logs
 *.log
-debug.log
-
-# Environment variables and secrets
-.env
-.env.*
-!.env.example
