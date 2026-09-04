@@ -13,68 +13,100 @@ The architecture is designed around one central principle: the language model ma
 ## High-Level Architecture
 
 ```text
-User Incident Request
-        |
-        v
-+-----------------------+
-| Bounded ReAct Agent   |
-| - Reason              |
-| - Select one action   |
-| - Maximum step limit  |
-+-----------+-----------+
-            |
-            v
-+-----------------------+
-| Deterministic Runtime |
-| - Parse response      |
-| - Validate format     |
-| - Execute tools       |
-| - Enforce boundaries  |
-+-----------+-----------+
-            |
-       +----+------------------+
-       |                       |
-       v                       v
-+---------------+       +------------------+
-| Direct Tools  |       | Semantic RAG     |
-|               |       |                  |
-| Incident data |       | Runbooks         |
-| Logs          |       | KB articles      |
-| Runbooks      |       | Past incidents   |
-+---------------+       +--------+---------+
-                                 |
-                                 v
-                        +------------------+
-                        | Retrieval        |
-                        | Reliability      |
-                        |                  |
-                        | Relevance gate   |
-                        | Verification     |
-                        | REJECT filtering |
-                        +--------+---------+
-                                 |
-                                 v
-                    +----------------------------+
-                    | Evidence-Only Memory       |
-                    | Accepted tool observations |
-                    +-------------+--------------+
+Investigation Request with Incident ID
+                |
+                v
++-----------------------------+
+| Bounded ReAct Agent         |
+| - Reason about the incident |
+| - Select one action         |
++-------------+---------------+
+              |
+              | Requested action
+              v
++-----------------------------+
+| Agent Control Layer         |
+| - Execute requested tools   |
+| - Enforce investigation     |
+|   boundaries                |
+| - e.g., allowed tools only  |
++-------------+---------------+
+              |
+        +-----+--------------------------------+
+        |                                      |
+        v                                      v
++--------------------------+        +--------------------------+
+| Investigation Tools      |        | RAG Knowledge Retrieval  |
+| - Retrieve incident      |        | - Search operational     |
+|   details                |        |   knowledge              |
+| - Search application     |        | - Runbooks               |
+|   logs                   |        | - KB articles            |
+| - Retrieve service       |        | - Past incidents         |
+|   runbook                |        +------------+-------------+
++------------+-------------+                     |
+             |                                   v
+             |                        +--------------------------+
+             |                        | Retrieval Reliability    |
+             |                        | - Relevance filtering    |
+             |                        | - Evidence-consistency   |
+             |                        |   verification           |
+             |                        | - Reject irrelevant      |
+             |                        |   results                |
+             |                        +------------+-------------+
+             |                                     |
+      Observation                         Verified Observation
+             |                                     |
+             +------------------+------------------+
+                                |
+                                v
+                     +----------------------+
+                     | Bounded ReAct Agent  |
+                     | Next reasoning step  |
+                     +----------+-----------+
+                                |
+                                | Agent proposes conclusion
+                                v
+                     +--------------------------+
+                     | Conclusion Guardrails    |
+                     | - Require incident       |
+                     |   details                |
+                     | - Require direct log     |
+                     |   evidence               |
+                     | - Allow conclusion only  |
+                     |   when minimum evidence  |
+                     |   is met                 |
+                     +------------+-------------+
                                   |
-                                  v
-                    +----------------------------+
-                    | Conclusion Guardrails      |
-                    | - Incident details present |
-                    | - Direct log evidence      |
-                    +-------------+--------------+
-                                  |
-                            +-----+-----+
-                            |           |
-                            v           v
-                       finish[...]   Continue reasoning
-                                        |
-                                 Maximum steps reached
-                                        |
-                                        v
-                               HUMAN_INPUT_REQUIRED
+                           +------+------+
+                           |             |
+                    Evidence met    Evidence not met
+                           |             |
+                           v             |
+                +----------------------+ |
+                | Investigation        | |
+                | Conclusion           | |
+                | - Grounded findings  | |
+                | - Recommended next   | |
+                |   steps              | |
+                +----------------------+ |
+                                         |
+                                         +----> Continue reasoning
+                                                with ReAct Agent
+
+
+Independent reasoning limit:
+
++-----------------------------+
+| Maximum Reasoning Steps     |
+| Reached                     |
++-------------+---------------+
+              |
+              v
++-----------------------------+
+| Human Review Required       |
+| Preserve collected evidence |
+| for engineer review         |
++-----------------------------+
 ```
 
 ---
@@ -94,7 +126,7 @@ The agent then waits for the real tool observation before continuing.
 
 The reasoning loop is bounded by a maximum number of steps. This gives the model reasoning autonomy during the investigation while limiting how long it can continue without reaching a conclusion or escalating to a human.
 
-### Deterministic Runtime and Parser Guardrail
+### Agent Control Layer and Parser Guardrail
 
 The language model does not execute tools directly.
 
@@ -104,9 +136,9 @@ If the model attempts to generate its own `Observation:` or additional ReAct ste
 
 This creates a deterministic boundary between model-generated reasoning and authoritative tool output.
 
-### Direct Investigation Tools
+### Investigation Tools
 
-The agent can access structured synthetic incident information through direct tools.
+The agent can access structured synthetic incident information through investigation tools.
 
 These tools include:
 
@@ -114,7 +146,7 @@ These tools include:
 - application log search
 - service runbook retrieval
 
-Direct tools provide current operational evidence used during the investigation.
+These tools provide current operational evidence used during the investigation.
 
 ### Semantic Retrieval
 
