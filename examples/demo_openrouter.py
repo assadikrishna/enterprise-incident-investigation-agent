@@ -1,4 +1,11 @@
 import time
+import os
+
+
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+
 from src.agent import investigate
 from src.llm import generate
 

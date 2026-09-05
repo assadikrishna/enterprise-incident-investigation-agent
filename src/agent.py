@@ -160,6 +160,7 @@ def investigate(
     incident_request: str,
     generate: GenerateFunction,
     max_steps: int = 6,
+    debug: bool = False,
 ) -> str:
     """
     Run the ReAct investigation loop.
@@ -191,10 +192,10 @@ def investigate(
                     + trace
                     + correction
                 )
-
-                print("\n===== RAW MODEL RESPONSE =====")
-                print(repr(response))
-                print("===== END RAW MODEL RESPONSE =====")
+                if debug:
+                    print("\n===== RAW MODEL RESPONSE =====")
+                    print(repr(response))
+                    print("===== END RAW MODEL RESPONSE =====")
 
                 try:
                     thought, action = parse_response(response)
@@ -222,10 +223,10 @@ def investigate(
                     )
 
        
-
-        print("\n===== PARSED ACTION =====")
-        print(repr(action))
-        print("===== END PARSED ACTION =====")
+        if debug:
+            print("\n===== PARSED ACTION =====")
+            print(repr(action))
+            print("===== END PARSED ACTION =====")
 
         if re.fullmatch(r"finish\[.+]", action, flags=re.IGNORECASE | re.DOTALL):
          missing_evidence = []
@@ -252,15 +253,22 @@ def investigate(
                 action,
                 current_evidence=evidence_trace,
             )
+    
+        if debug:
+            print("\n===== TOOL OBSERVATION =====")
+            print(repr(observation))
+            print("===== END TOOL OBSERVATION =====")
 
-        print("\n===== TOOL OBSERVATION =====")
-        print(repr(observation))
-        print("===== END TOOL OBSERVATION =====")
-
-        print(f"\nStep {step}")
-        print(f"Thought: {thought}")
-        print(f"Action: {action}")
-        print(f"Observation: {observation}")
+        if observation.startswith("FINISH:"):
+            print(f"\nStep {step}")
+            print("Action: Complete investigation")
+        else:
+            print(f"\nStep {step}")
+            print(f"Thought: {thought}")
+            print(f"Action: {action}")
+            display_observation = format_observation_for_display(action, observation)
+            print(f"Observation: {display_observation}")
+       
 
         if (re.fullmatch(r"get_incident_details\[.+]",
         action,
@@ -315,3 +323,33 @@ def investigate(
         "provide additional incident context or investigate information that "
         "the current tools cannot access."
     )
+
+def format_observation_for_display(action: str, observation: str) -> str:
+    if action.lower().startswith("search_knowledge["):
+        results = observation.split("\n\n---\n\n")
+        lines = []
+
+        for result in results:
+            source = ""
+            score = ""
+            classification = ""
+
+            for line in result.splitlines():
+                if line.startswith("Source:"):
+                    source = line.removeprefix("Source:").strip()
+                elif line.startswith("Score:"):
+                    score = line.removeprefix("Score:").strip()
+                elif line.startswith("Classification:"):
+                    classification = line.removeprefix("Classification:").strip()
+
+            if source:
+                source = source.replace("\\", "/").split("/")[-1]
+
+            if source and score and classification:
+                lines.append(
+                    f"- {source} | Score: {score} | {classification}"
+                )
+
+        return "\n".join(lines)
+
+    return observation
