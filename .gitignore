@@ -25,4 +25,7 @@ build/
 *.egg-info/
 
 # Logs
-*.logexamples/demo-full-run.txt
+*.log
+
+# Local demo output
+examples/demo-full-run.txt
