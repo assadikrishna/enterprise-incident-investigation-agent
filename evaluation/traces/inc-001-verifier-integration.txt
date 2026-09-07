@@ -204,4 +204,4 @@ Recommended Next Investigation Steps (require human review/approval):
 Remaining Uncertainty:
 - No direct evidence yet that version 2.3 altered the connection-pool configuration; this must be verified by inspecting deployment configs or change logs.
 - Database-side metrics (active connections, latency) not yet reviewed.
-(.venv) PS C:\Users\assad\Documents\enterprise-incident-investigation-agent> 
+(.venv) PS <PROJECT_ROOT> 

@@ -89,14 +89,14 @@ OpenRouter rate limit reached. Retrying in 2.0 seconds (2/3)...
 Traceback (most recent call last):
   File "<frozen runpy>", line 198, in _run_module_as_main
   File "<frozen runpy>", line 88, in _run_code
-  File "C:\Users\assad\Documents\enterprise-incident-investigation-agent\examples\demo_openrouter.py", line 21, in <module>
+  File "<PROJECT_ROOT>\examples\demo_openrouter.py", line 21, in <module>
     main()
-  File "C:\Users\assad\Documents\enterprise-incident-investigation-agent\examples\demo_openrouter.py", line 8, in main
+  File "<PROJECT_ROOT>\examples\demo_openrouter.py", line 8, in main
     result = investigate(
              ^^^^^^^^^^^^
-  File "C:\Users\assad\Documents\enterprise-incident-investigation-agent\src\agent.py", line 189, in investigate
+  File "<PROJECT_ROOT>\src\agent.py", line 189, in investigate
     response = generate(
                ^^^^^^^^^
-  File "C:\Users\assad\Documents\enterprise-incident-investigation-agent\src\llm.py", line 98, in generate
+  File "<PROJECT_ROOT>\src\llm.py", line 98, in generate
     raise RuntimeError(
 RuntimeError: OpenRouter rate limit reached. Failed after 3 attempts.
