@@ -5,3 +5,6 @@ openai
 python-dotenv
 sentence-transformers
 faiss-cpu
+langchain
+langgraph
+pytest
