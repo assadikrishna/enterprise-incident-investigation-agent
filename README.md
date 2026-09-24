@@ -1,8 +1,11 @@
 # Enterprise Incident Investigation Agent
 
-An AI-powered incident investigation agent that uses a bounded ReAct reasoning loop, short-term memory, semantic retrieval, and external tools to help engineers investigate production incidents.
+An AI-powered incident investigation agent that uses bounded ReAct reasoning, short-term memory, semantic retrieval, and external tools to help engineers investigate application incidents.
 
-The agent gathers evidence from incident records, application logs, runbooks, knowledge-base articles, and historical incidents before producing evidence-based investigation summaries. Deterministic guardrails restrict how model-generated information can enter the accepted evidence, while human engineers remain responsible for production-impacting decisions.
+The project includes a Python-based ReAct implementation, LangGraph workflow orchestration, and LangChain integration with OpenRouter. The agent retrieves evidence from synthetic incident records and application logs, with access to runbooks, knowledge-base articles, and historical incidents through semantic RAG when additional context is needed.
+
+Deterministic guardrails enforce evidence requirements and investigation limits. The agent produces investigation summaries that distinguish observed evidence from unverified root-cause hypotheses, while human engineers retain responsibility for production-impacting decisions.
+
 
 ---
 
@@ -16,13 +19,26 @@ The project was developed incrementally throughout the course, with each module 
 
 ## Project Status
 
-Final capstone implementation and evaluation complete.
+The Enterprise Incident Investigation Agent includes:
+
+- A bounded ReAct investigation agent implemented in Python.
+- LangGraph-based investigation workflow orchestration.
+- LangChain ChatOpenAI integration with OpenRouter.
+- LangChain prompt templates and LCEL-based prompt execution.
+- Semantic RAG over synthetic runbooks, knowledge-base articles, and historical incidents.
+- Deterministic guardrails, minimum-evidence checks, and human-in-the-loop escalation.
+- Automated tests and end-to-end investigation demonstrations.
 
 ---
 
 ## Current Capabilities
 
 - Bounded ReAct-style reasoning loop
+- Python-based ReAct investigation orchestration
+- LangGraph-based investigation workflow orchestration
+- LangChain prompt templates and LCEL-based model execution
+- OpenRouter integration through LangChain ChatOpenAI
+- Separate runnable demos for the original ReAct, LangGraph, and LangChain + LangGraph implementations
 - Short-term working memory for the active investigation
 - Evidence-only investigation memory for accepted tool observations
 - Incident record retrieval
@@ -38,7 +54,7 @@ Final capstone implementation and evaluation complete.
 - Maximum-step reasoning limit
 - Human-in-the-loop escalation when the reasoning budget is exhausted
 - OpenRouter LLM integration with retries and request timeouts
-- Evidence-based investigation summaries that distinguish observed evidence from remaining hypotheses
+- Investigation summaries that distinguish observed failure mechanisms from unverified root-cause hypotheses
 - Human approval required for production-impacting decisions
 
 ---
@@ -57,23 +73,32 @@ enterprise-incident-investigation-agent/
 │   └── project-charter.md
 │
 ├── evaluation/
-│   ├── evaluation-plan.md      # Evaluation scenarios and criteria
-│   ├── results.md              # Evaluation results and metrics
+│   ├── evaluation-plan.md
+│   ├── results.md
 │   └── traces/                 # Saved evaluation traces
 │
 ├── examples/
-│   ├── demo_openrouter.py      # End-to-end OpenRouter demo
+│   ├── demo_openrouter.py      # Original ReAct + OpenRouter demo
+│   ├── demo_langgraph_openrouter.py
+│   ├── demo_langchain_langgraph.py
 │   ├── demo_react.py
 │   ├── demo_verification.py
 │   └── demo_max_steps_hitl.py
 │
 ├── src/
-│   ├── agent.py                # Bounded ReAct reasoning loop and guardrails
-│   ├── llm.py                  # OpenRouter integration and retry handling
+│   ├── agent.py                # Original bounded ReAct agent
+│   ├── graph/
+│   │   ├── state.py            # LangGraph investigation state
+│   │   ├── nodes.py            # Reasoning and tool execution nodes
+│   │   └── workflow.py         # LangGraph workflow orchestration
+│   ├── langchain_llm.py        # LangChain + OpenRouter integration
+│   ├── llm.py                  # Original OpenRouter integration
+│   ├── protocol.py             # Shared ReAct prompt and parser
 │   ├── retrieval.py            # Semantic retrieval and relevance filtering
 │   ├── tools.py                # Investigation tools
 │   └── verification.py         # Retrieved-evidence verification
 │
+├── tests/                      # Automated tests
 ├── requirements.txt
 └── README.md
 ```
@@ -109,23 +134,46 @@ Do not commit the `.env` file or API keys to source control.
 
 ## Running the Demo
 
-Run the end-to-end OpenRouter-powered investigation demo:
+The repository provides three ways to run an LLM-powered incident investigation.
+
+### 1. Original ReAct Agent
+
+Runs the Python-orchestrated ReAct investigation agent using OpenRouter.
 
 ```bash
 python -m examples.demo_openrouter
 ```
 
-The demo exercises the implemented investigation workflow, including:
+### 2. LangGraph Agent
+
+Runs the investigation using LangGraph for state management and workflow orchestration, with the existing OpenRouter integration.
+
+```bash
+python -m examples.demo_langgraph_openrouter
+```
+
+### 3. LangChain + LangGraph Agent
+
+Runs the LangGraph investigation workflow using LangChain prompt templates and `ChatOpenAI` to access OpenRouter.
+
+```bash
+python -m examples.demo_langchain_langgraph
+```
+
+### Investigation Workflow
+
+Depending on the available evidence and the agent's selected actions, an investigation may include:
 
 1. Retrieving incident details.
-2. Searching direct application logs.
-3. Consulting the service runbook.
-4. Performing semantic retrieval over the knowledge corpus.
-5. Verifying retrieved evidence before use.
-6. Rejecting malformed ReAct responses that contain fabricated observations.
-7. Enforcing minimum-evidence requirements before allowing a final conclusion.
-8. Escalating to human review if the reasoning-step limit is reached.
-9. Producing a final investigation summary when sufficient evidence is available.
+2. Searching application logs for direct evidence.
+3. Consulting the relevant service runbook.
+4. Using semantic RAG to retrieve supporting knowledge-base articles, runbooks, or historical incidents when additional context is needed.
+5. Verifying retrieved evidence before accepting it.
+6. Enforcing minimum-evidence requirements before allowing a final conclusion.
+7. Escalating to human review if the reasoning-step limit is reached.
+8. Producing an investigation summary that identifies supporting evidence and remaining uncertainties.
+
+The original ReAct implementation also uses a deterministic parser to reject model-generated observations that were not returned by tools.
 
 Because the LLM is accessed through OpenRouter, execution time and availability can vary by provider and model.
 
@@ -149,7 +197,9 @@ The implementation follows several architectural principles:
 
 ## Evaluation
 
-The final system was evaluated using four scenarios covering end-to-end investigation, retrieval verification, minimum-evidence enforcement, and human-in-the-loop escalation.
+The results below describe the original Python-orchestrated ReAct capstone implementation. The LangGraph and LangChain integrations have also been exercised through live demonstrations and automated workflow tests, but the original end-to-end evaluation metrics should not be interpreted as measurements of those integrations.
+
+The original capstone implementation was evaluated using four scenarios covering end-to-end investigation, retrieval verification, minimum-evidence enforcement, and human-in-the-loop escalation.
 
 In three formal end-to-end investigation runs:
 
@@ -168,26 +218,14 @@ Detailed evaluation criteria, results, and execution traces are available in the
 ## Technologies
 
 - Python
+- LangGraph
+- LangChain
 - OpenRouter
 - OpenAI Python SDK
 - SentenceTransformers
 - FAISS
 - python-dotenv
-
----
-
-## Future Work
-
-Potential extensions beyond the current capstone implementation include:
-
-- LangGraph-based workflow orchestration
-- Multi-agent investigation with specialized evidence, hypothesis, and verification roles
-- Tree-of-Thought-style exploration of competing root-cause hypotheses
-- Integration with real enterprise incident-management, logging, and knowledge systems
-- More extensive retrieval-threshold calibration and evaluation datasets
-- Improved handling of external LLM provider failures
-- Repeated-action detection and investigation-loop prevention
-- Longer-term memory for reusable incident knowledge
+- pytest
 
 ---
 
