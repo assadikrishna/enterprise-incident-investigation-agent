@@ -2,11 +2,13 @@
 
 ## System Overview
 
-The Enterprise Incident Investigation Agent is implemented as a bounded single-agent ReAct system.
+The Enterprise Incident Investigation Agent is a bounded incident investigation agent built around the ReAct reasoning pattern.
 
-The agent reasons about an incident, selects one approved action at a time, receives the resulting observation, and continues until it has enough evidence to produce a conclusion or reaches a safety boundary that requires human intervention.
+The repository provides multiple implementations of the same investigation architecture: the original Python-orchestrated ReAct agent, a LangGraph-based workflow, and a LangChain-integrated LangGraph workflow using OpenRouter.
 
-The architecture is designed around one central principle: the language model may reason and choose actions, but it does not directly create authoritative evidence or execute production changes.
+Across these implementations, the agent reasons about an incident, selects approved investigation actions, receives observations returned by tools, and continues until it has enough evidence to produce a conclusion or reaches a safety boundary that requires human intervention.
+
+The architecture is designed around one central principle: the language model may reason and choose actions, but model-generated text does not automatically become authoritative evidence, and the agent does not autonomously execute production changes.
 
 ---
 
@@ -111,11 +113,43 @@ Independent reasoning limit:
 
 ---
 
+## Implementation Layers
+
+The repository provides three implementation paths that share the same investigation tools, evidence boundaries, and safety principles.
+
+### Python-Orchestrated ReAct
+
+The original implementation in `src/agent.py` explicitly manages the ReAct reasoning loop, action execution, observations, evidence tracking, and investigation limits in Python.
+
+This implementation makes the underlying agent mechanics visible without relying on a workflow orchestration framework.
+
+### LangGraph Orchestration
+
+The LangGraph implementation separates investigation state, reasoning, tool execution, state updates, and routing into an explicit graph workflow.
+
+The workflow is implemented under `src/graph/`:
+
+- `state.py` defines the investigation state.
+- `nodes.py` implements reasoning, tool execution, and state-update behavior.
+- `workflow.py` defines graph transitions, conditional routing, termination, and maximum-step handling.
+
+The LangGraph workflow reuses the existing investigation tools and evidence controls rather than replacing them.
+
+### LangChain Integration
+
+The LangChain integration in `src/langchain_llm.py` provides prompt and model integration for the LangGraph workflow.
+
+It uses LangChain `ChatPromptTemplate`, LCEL composition, and `ChatOpenAI` configured to access the LLM through OpenRouter. LangGraph remains responsible for workflow orchestration, while LangChain provides the model and prompt integration layer.
+
+---
+
 ## Core Components
 
 ### Bounded ReAct Agent
 
-The main investigation loop is implemented in `src/agent.py`.
+ReAct provides the core reasoning pattern used by the investigation agent.
+
+In the original implementation, the reasoning loop is explicitly orchestrated in `src/agent.py`. The LangGraph implementation represents the same reasoning and action cycle through graph state, nodes, and conditional transitions.
 
 At each reasoning step, the model is expected to produce exactly:
 
@@ -124,7 +158,7 @@ At each reasoning step, the model is expected to produce exactly:
 
 The agent then waits for the real tool observation before continuing.
 
-The reasoning loop is bounded by a maximum number of steps. This gives the model reasoning autonomy during the investigation while limiting how long it can continue without reaching a conclusion or escalating to a human.
+The investigation is bounded by a maximum number of reasoning steps. This gives the model reasoning autonomy during the investigation while limiting how long it can continue without reaching a conclusion or escalating to a human.
 
 ### Agent Control Layer and Parser Guardrail
 
@@ -225,7 +259,7 @@ A typical investigation follows this sequence:
 
 ## Safety Boundaries
 
-The final implementation uses deterministic controls where model compliance alone is not sufficient.
+The architecture uses deterministic controls where model compliance alone is not sufficient.
 
 Key boundaries include:
 
@@ -245,6 +279,8 @@ These controls are intended to improve grounding and bounded behavior rather tha
 
 ## Current Scope
 
-The implemented capstone uses a bounded single-agent ReAct architecture.
+The repository implements the incident investigation workflow through the original Python-orchestrated ReAct agent and a LangGraph-based workflow, with an additional LangChain integration for prompt and model access through OpenRouter.
 
-Tree-of-Thought reasoning, LangGraph orchestration, and specialized multi-agent workflows were explored as design options during the course but are not part of the current implementation. They remain possible future extensions.
+The implementations operate on synthetic incident records, application logs, runbooks, knowledge-base articles, and historical incident data. Semantic RAG, retrieval verification, evidence controls, bounded reasoning, and human-in-the-loop escalation support the investigation process.
+
+The agent is designed to assist with investigation and evidence gathering. Production-impacting decisions and actions remain under human control.

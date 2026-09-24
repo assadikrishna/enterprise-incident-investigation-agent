@@ -45,7 +45,7 @@ Reason:
 The course introduces retrieval and vector databases in Module 3. Initial tool usage will use simple synthetic data sources.
 
 Status:
-Planned
+Implemented in a later project iteration.
 
 ---
 
@@ -104,6 +104,8 @@ A real language model is probabilistic and may produce different responses for t
 Trade-offs
 
 Prompt refinement improves response quality but does not guarantee compliance. Important safety and validation rules will be implemented as application-level guardrails and protocol logic in later iterations of the project.
+
+Subsequent implementation: Application-level parser validation, retrieval verification, minimum-evidence requirements, bounded reasoning, and human-in-the-loop escalation were added in later iterations.
 
 ## DD-008: ReAct Output Validation and Format Retry
 
@@ -192,3 +194,29 @@ Instead of terminating with only a maximum-step error, the runtime returns `HUMA
 The escalation uses the evidence-only investigation trace rather than the full ReAct reasoning trace. Model-generated thoughts, parser failures, guardrail-control messages, and rejected fabricated observations are therefore not presented as verified incident evidence.
 
 This behavior was tested both with a deterministic simulated reasoning sequence and with an end-to-end OpenRouter-driven investigation. In the end-to-end test, malformed model responses containing fabricated observations were rejected, the agent later executed an actual knowledge retrieval, and the investigation eventually reached its reasoning-step limit. The runtime then successfully escalated to a human while preserving the accepted evidence gathered so far.
+
+## DD-011: LangGraph Workflow Orchestration
+
+Decision:
+Add a LangGraph implementation of the investigation workflow while retaining the original Python-orchestrated ReAct implementation.
+
+Reason:
+The original implementation made the ReAct reasoning loop explicit and helped establish the investigation behavior before introducing a workflow framework. LangGraph was added to represent investigation state, reasoning, tool execution, state updates, conditional routing, and termination as an explicit graph.
+
+This allows the project to demonstrate framework-based orchestration without replacing the existing investigation tools, retrieval pipeline, evidence controls, or human-in-the-loop boundaries.
+
+Status: Implemented.
+
+## DD-012: LangChain Model and Prompt Integration
+
+Decision:
+Add LangChain as an alternative model and prompt integration layer for the LangGraph workflow while retaining the existing OpenRouter client and original ReAct implementation.
+
+Reason:
+LangChain provides standard abstractions for model access and prompt composition without requiring changes to the investigation tools or workflow behavior.
+
+The integration uses `ChatOpenAI` configured for OpenRouter, `ChatPromptTemplate` for prompt construction, and LCEL composition to connect the prompt and model. LangGraph remains responsible for workflow orchestration, while LangChain provides the model and prompt integration layer.
+
+Keeping the original OpenRouter integration alongside the LangChain implementation also makes the framework boundary explicit and allows the project to demonstrate both direct model integration and framework-based integration.
+
+Status: Implemented.
