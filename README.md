@@ -1,5 +1,7 @@
 # Enterprise Incident Investigation Agent
 
+[![Python CI](https://github.com/assadikrishna/enterprise-incident-investigation-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/assadikrishna/enterprise-incident-investigation-agent/actions/workflows/ci.yml)
+
 An AI-powered incident investigation agent that uses bounded ReAct reasoning, short-term memory, semantic retrieval, and external tools to help engineers investigate application incidents.
 
 The project includes a Python-based ReAct implementation, LangGraph workflow orchestration, and LangChain integration with OpenRouter. The agent retrieves evidence from synthetic incident records and application logs, with access to runbooks, knowledge-base articles, and historical incidents through semantic RAG when additional context is needed.
@@ -63,6 +65,10 @@ The Enterprise Incident Investigation Agent includes:
 
 ```text
 enterprise-incident-investigation-agent/
+
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # GitHub Actions automated tests
 │
 ├── data/
 │   └── synthetic/              # Synthetic incident and knowledge data
